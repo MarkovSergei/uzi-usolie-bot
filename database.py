@@ -29,6 +29,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS services (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
+            description TEXT DEFAULT '',
             price TEXT DEFAULT '',
             preparation TEXT DEFAULT '',
             is_active INTEGER DEFAULT 1
