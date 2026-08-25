@@ -314,7 +314,10 @@ async def plan_custom_date(message: types.Message, state: FSMContext):
 
 async def save_reminder(event, state: FSMContext, service_id: int, remind_date: str):
     """Сохранение напоминания."""
-    chat_id = str(event.chat.id)
+    if hasattr(event, 'message'):
+        chat_id = str(event.message.chat.id)
+    else:
+        chat_id = str(event.chat.id)
 
     # Проверяем, есть ли уже напоминание на это исследование
     conn = database.get_db()
