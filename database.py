@@ -1,6 +1,5 @@
 import sqlite3
 import os
-from datetime import datetime
 
 DB_PATH = os.path.join(os.getenv("DATA_PATH", "/app/data"), "bot.db")
 
@@ -82,8 +81,8 @@ def init_db():
         "work_hours": "пн–пт с 9:00 до 13:00",
         "phone": "+7 952 613-92-71",
         "map_link": "https://yandex.ru/maps/?text=Усолье-Сибирское, проезд Фестивальный, 9",
-        "admin_user_id": "",  # сюда впишете ваш user_id в Максе
-        "bot_token": ""       # сюда впишете токен бота Макса
+        "admin_user_id": "",
+        "bot_token": ""
     }
 
     for key, value in defaults.items():
