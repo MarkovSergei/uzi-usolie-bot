@@ -96,6 +96,7 @@ async def admin_services():
         <tr>
             <td>{s['id']}</td>
             <td>{s['name']}</td>
+            <td>{s['description'][:50] if s['description'] else ''}</td>
             <td>{s['price']}</td>
             <td>{prep}</td>
             <td>{'Да' if s['is_active'] else 'Нет'}</td>
@@ -106,7 +107,7 @@ async def admin_services():
     <h2>Исследования</h2>
     <a class="button" href="/admin/services/add">+ Добавить исследование</a>
     <table>
-        <tr><th>ID</th><th>Название</th><th>Цена</th><th>Подготовка</th><th>Активно</th><th></th></tr>
+        <tr><th>ID</th><th>Название</th><th>Описание</th><th>Цена</th><th>Подготовка</th><th>Активно</th><th></th></tr>
         {rows}
     </table>
     """
@@ -120,6 +121,9 @@ async def admin_services_add_form():
     <form action="/admin/services/add" method="post">
         <label>Название:</label>
         <input type="text" name="name" required>
+
+        <label>Описание (что входит в исследование):</label>
+        <textarea name="description" rows="3"></textarea>
 
         <label>Цена:</label>
         <input type="text" name="price" placeholder="Например: 2000 руб.">
@@ -143,6 +147,7 @@ async def admin_services_add(request: Request):
     form = await request.form()
 
     name = form.get("name", "")
+    description = form.get("description", "")
     price = form.get("price", "")
     preparation = form.get("preparation", "")
     is_active = 1 if form.get("is_active") else 0
@@ -150,8 +155,8 @@ async def admin_services_add(request: Request):
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO services (name, price, preparation, is_active) VALUES (?, ?, ?, ?)",
-        (name, price, preparation, is_active)
+        "INSERT INTO services (name, description, price, preparation, is_active) VALUES (?, ?, ?, ?, ?)",
+        (name, description, price, preparation, is_active)
     )
     conn.commit()
     conn.close()
@@ -178,6 +183,9 @@ async def admin_services_edit_form(service_id: int):
         <label>Название:</label>
         <input type="text" name="name" value="{s['name']}" required>
 
+        <label>Описание:</label>
+        <textarea name="description" rows="3">{s['description']}</textarea>
+
         <label>Цена:</label>
         <input type="text" name="price" value="{s['price']}">
 
@@ -200,6 +208,7 @@ async def admin_services_edit(service_id: int, request: Request):
     form = await request.form()
 
     name = form.get("name", "")
+    description = form.get("description", "")
     price = form.get("price", "")
     preparation = form.get("preparation", "")
     is_active = 1 if form.get("is_active") else 0
@@ -207,8 +216,8 @@ async def admin_services_edit(service_id: int, request: Request):
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE services SET name = ?, price = ?, preparation = ?, is_active = ? WHERE id = ?",
-        (name, price, preparation, is_active, service_id)
+        "UPDATE services SET name = ?, description = ?, price = ?, preparation = ?, is_active = ? WHERE id = ?",
+        (name, description, price, preparation, is_active, service_id)
     )
     conn.commit()
     conn.close()
