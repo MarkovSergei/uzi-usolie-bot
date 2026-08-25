@@ -2,7 +2,8 @@ import os
 from datetime import datetime
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from bot import bot
+import config
+import requests
 import database
 
 router = APIRouter()
