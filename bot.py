@@ -437,9 +437,11 @@ async def my_reminders(message: types.Message):
 
     keyboard = []
     for reminder in reminders:
+        # Используем только индекс напоминания для callback_data
+        callback_data = f"myrem_{reminder['remind_date'].replace('.', '-')}"
         keyboard.append([InlineKeyboardButton(
             text=f"{reminder['name']} — {reminder['remind_date']}",
-            callback_data=f"myrem_{reminder['remind_date']}_{reminder['name']}"
+            callback_data=callback_data
         )])
     keyboard.append([InlineKeyboardButton(text="← Назад", callback_data="back_to_main")])
 
@@ -452,9 +454,8 @@ async def my_reminders(message: types.Message):
 @dp.callback_query(F.data.startswith("myrem_"))
 async def my_reminder_detail(callback: types.CallbackQuery):
     """Детали напоминания."""
-    parts = callback.data.split("_")
-    remind_date = parts[1]
-    service_name = "_".join(parts[2:])
+    # Извлекаем дату из callback_data
+    remind_date = callback.data.replace("myrem_", "").replace("-", ".")
 
     text = (
         f"🔔 Напоминание\n\n"
