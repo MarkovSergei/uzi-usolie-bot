@@ -314,10 +314,13 @@ async def plan_custom_date(message: types.Message, state: FSMContext):
 
 async def save_reminder(event, state: FSMContext, service_id: int, remind_date: str):
     """Сохранение напоминания."""
-    if hasattr(event, 'message'):
+    # Определяем chat_id и message для ответа
+    if hasattr(event, 'message') and event.message is not None:
         chat_id = str(event.message.chat.id)
+        message = event.message
     else:
         chat_id = str(event.chat.id)
+        message = event
 
     # Проверяем, есть ли уже напоминание на это исследование
     conn = database.get_db()
@@ -333,7 +336,7 @@ async def save_reminder(event, state: FSMContext, service_id: int, remind_date: 
             [InlineKeyboardButton(text="Да, обновить", callback_data=f"update_reminder_{service_id}_{remind_date}")],
             [InlineKeyboardButton(text="Отмена", callback_data="plan_back_to_main")],
         ])
-        await event.message.answer(
+        await message.answer(
             f"У вас уже запланировано это исследование на {existing['remind_date']}.\n\nОбновить дату?",
             reply_markup=keyboard
         )
@@ -359,7 +362,7 @@ async def save_reminder(event, state: FSMContext, service_id: int, remind_date: 
         "За день до визита пришлю напоминание с подготовкой, графиком работы и адресом."
     )
 
-    await event.message.answer(text, reply_markup=get_main_keyboard())
+    await message.answer(text, reply_markup=get_main_keyboard())
     await state.clear()
 
 
