@@ -478,7 +478,7 @@ async def contacts(message: types.Message):
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🗺 Открыть на карте", url=settings.get("map_link", ""))],
-        [InlineKeyboardButton(text="📲 Задать вопрос врачу", url=f"https://t.me/{settings.get('phone', '').replace('+', '')}")],
+        InlineKeyboardButton(text="📲 Задать вопрос врачу", url="https://t.me/MarkovSerge")
     ])
 
     text = (
