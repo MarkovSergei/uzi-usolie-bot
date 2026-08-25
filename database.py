@@ -1,0 +1,96 @@
+import sqlite3
+import os
+from datetime import datetime
+
+DB_PATH = os.path.join(os.getenv("DATA_PATH", "/app/data"), "bot.db")
+
+def get_db():
+    """Подключение к базе данных."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    """Создание таблиц и стартовых настроек при первом запуске."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Таблица пользователей
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id TEXT UNIQUE NOT NULL,
+            created_at TEXT DEFAULT (datetime('now', '+8 hours')),
+            is_active INTEGER DEFAULT 1
+        )
+    """)
+
+    # Таблица исследований
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS services (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            price TEXT DEFAULT '',
+            preparation TEXT DEFAULT '',
+            is_active INTEGER DEFAULT 1
+        )
+    """)
+
+    # Таблица FAQ
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS faq (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL,
+            sort_order INTEGER DEFAULT 0
+        )
+    """)
+
+    # Таблица напоминаний
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS reminders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id TEXT NOT NULL,
+            service_id INTEGER NOT NULL,
+            remind_date TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now', '+8 hours')),
+            is_sent INTEGER DEFAULT 0
+        )
+    """)
+
+    # Таблица настроек
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    """)
+
+    # Таблица новостей (рассылок)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS news (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            text TEXT NOT NULL,
+            sent_at TEXT DEFAULT (datetime('now', '+8 hours')),
+            recipients INTEGER DEFAULT 0
+        )
+    """)
+
+    # Стартовые настройки
+    defaults = {
+        "address": "Усолье-Сибирское, проезд Фестивальный, 9, кабинет 312",
+        "work_hours": "пн–пт с 9:00 до 13:00",
+        "phone": "+7 952 613-92-71",
+        "map_link": "https://yandex.ru/maps/?text=Усолье-Сибирское, проезд Фестивальный, 9",
+        "admin_user_id": "",  # сюда впишете ваш user_id в Максе
+        "bot_token": ""       # сюда впишете токен бота Макса
+    }
+
+    for key, value in defaults.items():
+        cursor.execute(
+            "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
+            (key, value)
+        )
+
+    conn.commit()
+    conn.close()
