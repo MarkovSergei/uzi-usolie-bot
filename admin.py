@@ -438,8 +438,14 @@ async def admin_news_send(request: Request):
     sent = 0
     for user in users:
         try:
-            await bot.send_message(chat_id=user["chat_id"], text=text)
-            sent += 1
+            url = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage"
+            payload = {
+                "chat_id": user["chat_id"],
+                "text": text
+            }
+            response = requests.post(url, json=payload, timeout=10)
+            if response.status_code == 200:
+                sent += 1
         except:
             pass
 
