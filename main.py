@@ -3,23 +3,22 @@ import uvicorn
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
-import database
 import config
-
-# Импорт обработчиков (будут позже)
-# import bot_handlers
-# import admin_routes
-# import scheduler
+import database
+import bot
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # При старте
+    # Инициализация базы
     database.init_db()
-    # Запуск фонового планировщика
-    # asyncio.create_task(scheduler.run())
+
+    # Запуск бота в фоне
+    bot_task = asyncio.create_task(bot.run_bot())
+
     yield
+
     # При остановке
-    pass
+    bot_task.cancel()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -32,8 +31,4 @@ async def health():
     return {"status": "ok"}
 
 if __name__ == "__main__":
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=config.PORT
-    )
+    uvicorn.run(app, host="0.0.0.0", port=config.PORT)
