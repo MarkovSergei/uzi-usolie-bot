@@ -6,6 +6,8 @@ from contextlib import asynccontextmanager
 import config
 import database
 import bot
+import scheduler
+import admin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -15,12 +17,19 @@ async def lifespan(app: FastAPI):
     # Запуск бота в фоне
     bot_task = asyncio.create_task(bot.run_bot())
 
+    # Запуск планировщика в фоне
+    scheduler_task = asyncio.create_task(scheduler.run_scheduler())
+
     yield
 
     # При остановке
     bot_task.cancel()
+    scheduler_task.cancel()
 
 app = FastAPI(lifespan=lifespan)
+
+# Подключаем админку
+app.include_router(admin.router)
 
 @app.get("/")
 async def root():
