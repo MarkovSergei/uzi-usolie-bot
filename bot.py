@@ -1,41 +1,34 @@
 import asyncio
-import requests
-from datetime import datetime, timedelta
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import Command
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 import config
 import database
 
-def send_message(chat_id, text, keyboard=None):
-    """Отправка сообщения в Макс."""
-    url = f"https://api.max.ru/bot/{config.BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-    }
-    if keyboard:
-        payload["keyboard"] = keyboard
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        return response.json()
-    except Exception as e:
-        print(f"Ошибка отправки: {e}")
-        return None
+bot = Bot(token=config.BOT_TOKEN)
+dp = Dispatcher()
 
 def get_main_keyboard():
     """Клавиатура главного меню."""
-    return {
-        "buttons": [
-            [{"text": "🩺 Виды УЗИ и цены"}],
-            [{"text": "❓ Вопросы и ответы"}],
-            [{"text": "📅 Запланировать визит"}],
-            [{"text": "🔔 Мои напоминания"}],
-            [{"text": "📍 Контакты и график"}],
-        ]
-    }
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🩺 Виды УЗИ и цены")],
+            [KeyboardButton(text="❓ Вопросы и ответы")],
+            [KeyboardButton(text="📅 Запланировать визит")],
+            [KeyboardButton(text="🔔 Мои напоминания")],
+            [KeyboardButton(text="📍 Контакты и график")],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Выберите действие"
+    )
 
-def handle_start(chat_id):
+@dp.message(Command("start"))
+async def cmd_start(message: types.Message):
     """Обработка команды /start."""
-    # Регистрация пользователя
+    chat_id = str(message.chat.id)
+
+    # Регистрируем пользователя
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute(
@@ -51,28 +44,28 @@ def handle_start(chat_id):
         "Помогу узнать цены, подготовку к исследованиям и напомню о плановом визите.\n\n"
         "Выберите действие в меню:"
     )
-    send_message(chat_id, text, get_main_keyboard())
+    await message.answer(text, reply_markup=get_main_keyboard())
 
-def handle_message(chat_id, text):
-    """Обработка входящих сообщений."""
-    if text == "/start":
-        handle_start(chat_id)
-    elif text == "🩺 Виды УЗИ и цены":
-        # Заглушка, будет позже
-        send_message(chat_id, "Здесь будет список исследований.")
-    elif text == "❓ Вопросы и ответы":
-        send_message(chat_id, "Здесь будет FAQ.")
-    elif text == "📅 Запланировать визит":
-        send_message(chat_id, "Здесь будет планировщик.")
-    elif text == "🔔 Мои напоминания":
-        send_message(chat_id, "Здесь будут ваши напоминания.")
-    elif text == "📍 Контакты и график":
-        send_message(chat_id, "Здесь будут контакты.")
-    else:
-        send_message(chat_id, "Используйте кнопки меню.", get_main_keyboard())
+@dp.message(F.text == "🩺 Виды УЗИ и цены")
+async def services_list(message: types.Message):
+    await message.answer("Здесь будет список исследований.")
 
-async def run_polling():
-    """Опрос сервера Макс."""
-    while True:
-        # Здесь будет запрос getUpdates
-        await asyncio.sleep(2)
+@dp.message(F.text == "❓ Вопросы и ответы")
+async def faq_list(message: types.Message):
+    await message.answer("Здесь будут вопросы и ответы.")
+
+@dp.message(F.text == "📅 Запланировать визит")
+async def plan_visit(message: types.Message):
+    await message.answer("Здесь будет планировщик.")
+
+@dp.message(F.text == "🔔 Мои напоминания")
+async def my_reminders(message: types.Message):
+    await message.answer("Здесь будут ваши напоминания.")
+
+@dp.message(F.text == "📍 Контакты и график")
+async def contacts(message: types.Message):
+    await message.answer("Здесь будут контакты.")
+
+async def run_bot():
+    """Запуск polling."""
+    await dp.start_polling(bot)
