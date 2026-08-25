@@ -435,7 +435,7 @@ async def admin_news_send(request: Request):
     cursor.execute("SELECT chat_id FROM users WHERE is_active = 1")
     users = cursor.fetchall()
 
-        sent = 0
+    sent = 0
     for user in users:
         try:
             url = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage"
