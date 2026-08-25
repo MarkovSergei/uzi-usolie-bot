@@ -1,14 +1,25 @@
 import os
 from datetime import datetime
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 import config
 import requests
 import database
+import hashlib
+import secrets
 
 router = APIRouter()
 
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "admin_secret")
+
+# Генерация секретного ключа для подписи cookie
+SECRET_KEY = secrets.token_hex(16)
+
+def check_auth(request: Request) -> bool:
+    """Проверка авторизации."""
+    token = request.cookies.get("admin_token", "")
+    expected = hashlib.sha256(ADMIN_TOKEN.encode()).hexdigest()
+    return token == expected
 
 def render_page(content: str) -> str:
     """Оборачиваем контент в HTML."""
@@ -49,11 +60,84 @@ def render_page(content: str) -> str:
     </html>
     """
 
+def render_login(error: str = "") -> str:
+    """Форма входа."""
+    error_html = f'<p style="color:red">{error}</p>' if error else ""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Вход — Админка</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 0 15px; }}
+            input {{ width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; }}
+            button {{ padding: 10px 20px; background: #0066cc; color: white; border: none; cursor: pointer; }}
+        </style>
+    </head>
+    <body>
+        <h1>Вход в админку</h1>
+        {error_html}
+        <form action="/admin/login" method="post">
+            <label>Пароль:</label>
+            <input type="password" name="password" required>
+            <button type="submit">Войти</button>
+        </form>
+    </body>
+    </html>
+    """
+
+# ------------------------- АВТОРИЗАЦИЯ -------------------------
+
+@router.get("/admin/login")
+async def admin_login_form():
+    """Страница входа."""
+    return HTMLResponse(render_login())
+
+@router.post("/admin/login")
+async def admin_login(request: Request):
+    """Обработка входа."""
+    form = await request.form()
+    password = form.get("password", "")
+
+    if password == ADMIN_TOKEN:
+        token = hashlib.sha256(ADMIN_TOKEN.encode()).hexdigest()
+        response = RedirectResponse("/admin", status_code=303)
+        response.set_cookie(
+            key="admin_token",
+            value=token,
+            max_age=30 * 24 * 60 * 60,  # 30 дней
+            httponly=True
+        )
+        return response
+    else:
+        return HTMLResponse(render_login("Неверный пароль"))
+
+@router.get("/admin/logout")
+async def admin_logout():
+    """Выход."""
+    response = RedirectResponse("/admin/login", status_code=303)
+    response.delete_cookie("admin_token")
+    return response
+
+# ------------------------- ПРОВЕРКА АВТОРИЗАЦИИ -------------------------
+
+def require_auth(request: Request):
+    """Проверка авторизации. Если нет — редирект на вход."""
+    if not check_auth(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    return None
+
 # ------------------------- ГЛАВНАЯ -------------------------
 
 @router.get("/admin")
-async def admin_home():
+async def admin_home(request: Request):
     """Главная страница админки."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     conn = database.get_db()
     cursor = conn.cursor()
 
@@ -75,14 +159,19 @@ async def admin_home():
         <p>Новых за сегодня: <b>{new_today}</b></p>
         <p>Удалили бота: <b>{deleted}</b></p>
     </div>
+    <p><a href="/admin/logout">Выйти</a></p>
     """
     return HTMLResponse(render_page(content))
 
 # ------------------------- ИССЛЕДОВАНИЯ -------------------------
 
 @router.get("/admin/services")
-async def admin_services():
+async def admin_services(request: Request):
     """Список исследований."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM services ORDER BY id")
@@ -114,8 +203,12 @@ async def admin_services():
     return HTMLResponse(render_page(content))
 
 @router.get("/admin/services/add")
-async def admin_services_add_form():
+async def admin_services_add_form(request: Request):
     """Форма добавления исследования."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     content = """
     <h2>Добавить исследование</h2>
     <form action="/admin/services/add" method="post">
@@ -144,6 +237,10 @@ async def admin_services_add_form():
 @router.post("/admin/services/add")
 async def admin_services_add(request: Request):
     """Сохранение нового исследования."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     form = await request.form()
 
     name = form.get("name", "")
@@ -164,8 +261,12 @@ async def admin_services_add(request: Request):
     return RedirectResponse("/admin/services", status_code=303)
 
 @router.get("/admin/services/edit/{service_id}")
-async def admin_services_edit_form(service_id: int):
+async def admin_services_edit_form(service_id: int, request: Request):
     """Форма редактирования исследования."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM services WHERE id = ?", (service_id,))
@@ -205,6 +306,10 @@ async def admin_services_edit_form(service_id: int):
 @router.post("/admin/services/edit/{service_id}")
 async def admin_services_edit(service_id: int, request: Request):
     """Сохранение изменений исследования."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     form = await request.form()
 
     name = form.get("name", "")
@@ -227,8 +332,12 @@ async def admin_services_edit(service_id: int, request: Request):
 # ------------------------- FAQ -------------------------
 
 @router.get("/admin/faq")
-async def admin_faq():
+async def admin_faq(request: Request):
     """Список FAQ."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM faq ORDER BY sort_order")
@@ -257,8 +366,12 @@ async def admin_faq():
     return HTMLResponse(render_page(content))
 
 @router.get("/admin/faq/add")
-async def admin_faq_add_form():
+async def admin_faq_add_form(request: Request):
     """Форма добавления вопроса."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     content = """
     <h2>Добавить вопрос</h2>
     <form action="/admin/faq/add" method="post">
@@ -279,6 +392,10 @@ async def admin_faq_add_form():
 @router.post("/admin/faq/add")
 async def admin_faq_add(request: Request):
     """Сохранение нового вопроса."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     form = await request.form()
 
     question = form.get("question", "")
@@ -297,8 +414,12 @@ async def admin_faq_add(request: Request):
     return RedirectResponse("/admin/faq", status_code=303)
 
 @router.get("/admin/faq/edit/{faq_id}")
-async def admin_faq_edit_form(faq_id: int):
+async def admin_faq_edit_form(faq_id: int, request: Request):
     """Форма редактирования вопроса."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM faq WHERE id = ?", (faq_id,))
@@ -328,6 +449,10 @@ async def admin_faq_edit_form(faq_id: int):
 @router.post("/admin/faq/edit/{faq_id}")
 async def admin_faq_edit(faq_id: int, request: Request):
     """Сохранение изменений вопроса."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     form = await request.form()
 
     question = form.get("question", "")
@@ -348,8 +473,12 @@ async def admin_faq_edit(faq_id: int, request: Request):
 # ------------------------- КОНТАКТЫ -------------------------
 
 @router.get("/admin/contacts")
-async def admin_contacts():
+async def admin_contacts(request: Request):
     """Редактирование контактов."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM settings")
@@ -379,6 +508,10 @@ async def admin_contacts():
 @router.post("/admin/contacts/save")
 async def admin_contacts_save(request: Request):
     """Сохранение контактов."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     form = await request.form()
 
     conn = database.get_db()
@@ -397,8 +530,12 @@ async def admin_contacts_save(request: Request):
 # ------------------------- НОВОСТИ -------------------------
 
 @router.get("/admin/news")
-async def admin_news():
+async def admin_news(request: Request):
     """Страница рассылок."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM news ORDER BY id DESC LIMIT 20")
@@ -433,6 +570,10 @@ async def admin_news():
 @router.post("/admin/news/send")
 async def admin_news_send(request: Request):
     """Отправка рассылки."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     form = await request.form()
     text = form.get("text", "")
 
@@ -470,8 +611,12 @@ async def admin_news_send(request: Request):
 # ------------------------- НАСТРОЙКИ -------------------------
 
 @router.get("/admin/settings")
-async def admin_settings():
+async def admin_settings(request: Request):
     """Настройки."""
+    auth_redirect = require_auth(request)
+    if auth_redirect:
+        return auth_redirect
+
     content = """
     <h2>Настройки</h2>
     <p>Настройки задаются через переменные окружения Bothost:</p>
@@ -481,5 +626,6 @@ async def admin_settings():
         <li><b>PORT</b> — порт (обычно 8000)</li>
         <li><b>ADMIN_TOKEN</b> — секретный токен для входа в админку</li>
     </ul>
+    <p><a href="/admin/logout">Выйти</a></p>
     """
     return HTMLResponse(render_page(content))
