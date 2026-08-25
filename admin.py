@@ -2,7 +2,8 @@ import os
 from datetime import datetime
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from bot import bot
+import config
+import requests
 import database
 
 router = APIRouter()
@@ -434,11 +435,17 @@ async def admin_news_send(request: Request):
     cursor.execute("SELECT chat_id FROM users WHERE is_active = 1")
     users = cursor.fetchall()
 
-    sent = 0
+        sent = 0
     for user in users:
         try:
-            await bot.send_message(chat_id=user["chat_id"], text=text)
-            sent += 1
+            url = f"https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage"
+            payload = {
+                "chat_id": user["chat_id"],
+                "text": text
+            }
+            response = requests.post(url, json=payload, timeout=10)
+            if response.status_code == 200:
+                sent += 1
         except:
             pass
 
