@@ -123,6 +123,8 @@ async def service_detail(callback: types.CallbackQuery):
 
     text = f"🩺 {service['name']}\n\n"
     text += f"💰 Цена: {service['price']}\n\n"
+    if service["description"]:
+        text += f"ℹ️ {service['description']}\n\n"
 
     if service["preparation"]:
         text += f"📋 Подготовка:\n{service['preparation']}"
