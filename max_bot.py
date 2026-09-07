@@ -362,21 +362,19 @@ def show_contacts(chat_id):
 # ------------------------- ЗАПУСК -------------------------
 
 async def run_max_bot():
-    """Long Polling для MAX."""
-    offset = 0
+    """Проверка токена MAX."""
+    try:
+        response = requests.get(
+            f"{API_URL}/me",
+            headers=HEADERS,
+            timeout=10,
+            verify=False
+        )
+        print(f"MAX /me status: {response.status_code}")
+        print(f"MAX /me response: {response.text}")
+    except Exception as e:
+        print(f"MAX /me error: {e}")
+
+    # Дальше пока ничего не запускаем
     while True:
-        try:
-            url = f"{API_URL}/updates"
-            params = {"offset": offset}
-            response = requests.get(url, headers=HEADERS, params=params, timeout=30, verify=False)
-            data = response.json()
-
-            updates = data.get("updates", [])
-            for update in updates:
-                process_update(update)
-                offset = max(offset, update.get("update_id", 0) + 1)
-
-        except Exception as e:
-            print(f"Ошибка polling MAX: {e}")
-
-        await asyncio.sleep(2)
+        await asyncio.sleep(60)
