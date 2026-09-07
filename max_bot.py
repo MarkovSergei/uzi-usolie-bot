@@ -1,9 +1,13 @@
 import asyncio
 import requests
+import urllib3
 from datetime import datetime, timedelta
 
 import config
 import database
+
+# Отключаем предупреждения SSL
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 API_URL = "https://platform-api2.max.ru"
 BOT_TOKEN = config.MAX_BOT_TOKEN
@@ -27,7 +31,7 @@ def send_message(chat_id, text, buttons=None):
         }]
 
     try:
-        response = requests.post(url, json=payload, headers=HEADERS, timeout=10)
+        response = requests.post(url, json=payload, headers=HEADERS, timeout=10, verify=False)
         return response.json()
     except Exception as e:
         print(f"Ошибка отправки: {e}")
@@ -364,7 +368,7 @@ async def run_max_bot():
         try:
             url = f"{API_URL}/updates"
             params = {"offset": offset}
-            response = requests.get(url, headers=HEADERS, params=params, timeout=30)
+            response = requests.get(url, headers=HEADERS, params=params, timeout=30, verify=False)
             data = response.json()
 
             updates = data.get("updates", [])
