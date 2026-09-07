@@ -6,9 +6,6 @@ load_dotenv()
 # Telegram
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
-# MAX
-MAX_BOT_TOKEN = os.getenv("MAX_BOT_TOKEN", "")
-
 # Общие
 ADMIN_USER_ID = os.getenv("ADMIN_USER_ID", "")
 PORT = int(os.getenv("PORT", 8000))
