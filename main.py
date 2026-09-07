@@ -6,7 +6,6 @@ from contextlib import asynccontextmanager
 import config
 import database
 import bot
-import max_bot
 import scheduler
 import admin
 
@@ -18,9 +17,6 @@ async def lifespan(app: FastAPI):
     # Запуск Telegram-бота
     tg_task = asyncio.create_task(bot.run_bot())
 
-    # Запуск MAX-бота
-    max_task = asyncio.create_task(max_bot.run_max_bot())
-
     # Запуск планировщика
     scheduler_task = asyncio.create_task(scheduler.run_scheduler())
 
@@ -28,7 +24,6 @@ async def lifespan(app: FastAPI):
 
     # При остановке
     tg_task.cancel()
-    max_task.cancel()
     scheduler_task.cancel()
 
 app = FastAPI(lifespan=lifespan)
