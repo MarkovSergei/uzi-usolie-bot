@@ -111,7 +111,7 @@ async def service_detail(callback: types.CallbackQuery):
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT name, price, preparation FROM services WHERE id = ?",
+        "SELECT name, description, price, preparation FROM services WHERE id = ?",
         (service_id,)
     )
     service = cursor.fetchone()
