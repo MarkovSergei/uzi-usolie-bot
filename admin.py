@@ -606,6 +606,18 @@ async def admin_news_send(request: Request):
     conn.commit()
     conn.close()
 
+    # Отправка в MAX
+    max_url = os.getenv("MAX_BOT_URL", "")
+    if max_url:
+        try:
+            requests.post(
+                f"{max_url}/send_news",
+                json={"text": text},
+                timeout=15
+            )
+        except:
+            pass
+
     return RedirectResponse("/admin/news", status_code=303)
 
 # ------------------------- НАСТРОЙКИ -------------------------
